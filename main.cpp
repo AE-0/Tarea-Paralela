@@ -1,14 +1,11 @@
-//#include <fmt/core.h>
-//#include <fmt/ranges.h>
-#include <cstdlib>
-#include <ranges>
-#include <array>
+#include <functional>
 #include <algorithm>
 #include <numeric>
-#include <functional>
-#include <iostream>
-#include <fstream>
+#include <ranges>
+#include <array>
 #include <string>
+#include <fstream>
+#include <iostream>
 #include <argp.h>
 
 namespace ra = std::ranges;
@@ -25,14 +22,6 @@ void print(ra::viewable_range auto &&v, std::string_view separator = ", ") {
 
 auto main(int argc, char **argv) -> int {
     argp_parse(0, argc, argv, 0, 0, 0);
-    constexpr int xs[2][3] = {{1, 2, 3}, {4, 5, 6}};
-
-    auto sum = xs | rv::transform([](auto& e) {
-        return e | rv::transform([](auto& d) { return d + 10; });
-    });
-
-    //fmt::print("{}\n", sum);
-    print(sum);
 
     std::ifstream file("example.txt"); // Open your file here
 
@@ -41,10 +30,39 @@ auto main(int argc, char **argv) -> int {
         exit(EXIT_FAILURE);
     }
 
-    for (std::string line; std::getline(file, line); ) {
-        std::cout << line << '\n';
+    const std::vector labyrinth = [&]() {
+        std::vector<std::string> result;
+        for (std::string line; std::getline(file, line); )
+            result.push_back(line);
+        return result;
+    }();
+
+    std::vector<std::vector<int>> matrix;
+
+    for (const std::string& row : labyrinth) {
+        std::vector<int> values;
+        for (std::size_t i = 0; i < row.size(); ++i) {
+            if (row[i] == ' ') values.push_back(0);
+            else {
+                values.push_back(1);
+                i += 2; // Skip the next two characters (weird bug where █ counts as 3 characters)
+            }
+        }
+        matrix.push_back(values);
+    }
+
+    for (const auto &s : labyrinth)
+        std::cout << s << '\n';
+
+    // print(matrix);
+    for (const auto& row : matrix) {
+        for (int val : row) {
+            std::cout << val << " ";
+        }
+        std::cout << "\n";
     }
 
     file.close();
+
     exit(EXIT_SUCCESS);
 }
