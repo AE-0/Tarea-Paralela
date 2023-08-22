@@ -5,5 +5,9 @@ MAKEFLAGS += --silent
 FILENAME = main
 
 default:
+	$(CXX) $(CFLAGS) $(CFLAGS2) $(FILENAME).cpp -o $(FILENAME)
+	./$(FILENAME) -i example.txt
+run:
 	$(CXX) $(CFLAGS) $(FILENAME).cpp -o $(FILENAME)
-	./$(FILENAME)
+	./$(FILENAME) -i example.txt
+	rm $(FILENAME)
