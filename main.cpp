@@ -11,24 +11,52 @@
 namespace ra = std::ranges;
 namespace rv = ra::views;
 
+struct Arguments {
+    std::string input_filename;
+    std::string output_filename;
+};
+
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-    if (key == 'i') {
-        *(std::string *)state->input = arg;
+    Arguments *arguments = static_cast<Arguments *>(state->input);
+    switch (key) {
+        case 'i':
+            arguments->input_filename = arg;
+            break;
+        case 'o':
+            arguments->output_filename = arg;
+            break;
+        default:
+            return ARGP_ERR_UNKNOWN;
     }
     return 0;
 }
 
+void encode(std::vector<std::vector<int>> matrix, std::string wall, std::string space, std::string ouput_file) {
+        std::ofstream file;
+        file.open(ouput_file);
+        for (const auto& row : matrix) {
+            for (std::size_t i = 0; i < row.size(); i ++)
+                file << (row[i]? wall : space );
+             file << '\n';
+        }
+        file.close();
+}
+
 auto main(int argc, char **argv) -> int {
-    std::string filename;
+    Arguments args;
+    std::string input_filename, output_filename;
     static const argp_option options[] = {
         {"input", 'i', "FILE", 0, "Input file", 0},
+        {"output", 'o', "FILE", 0, "Output file", 0},
         {nullptr, 0, nullptr, 0, nullptr, 0}};  // -Werror=missing-field-initializers
     static const argp argp_parser = {
-        options, parse_opt, "FILE", "Pass a file as an argument using -i flag",
+        options, parse_opt, "FILE", "Pass a file as an argument using -i and -o flag",
         nullptr, nullptr, nullptr};             // -Werror=missing-field-initializers
-    argp_parse(&argp_parser, argc, argv, 0, 0, &filename);
+    argp_parse(&argp_parser, argc, argv, 0, 0, &args);
 
-    std::ifstream file(filename);
+    std::ifstream file(args.input_filename);
+
+    std::cout << args.output_filename;
 
     if (!file.is_open()) {
         std::cerr << "Failed to open the file." << std::endl;
@@ -53,6 +81,7 @@ auto main(int argc, char **argv) -> int {
         return result;
     }();
 
+
     for (const auto &s : labyrinth)
         std::cout << s << '\n';
 
@@ -61,6 +90,8 @@ auto main(int argc, char **argv) -> int {
             std::cout << val << " ";
         std::cout << "\n";
     }
+
+    encode(matrix, "█", " ", args.output_filename);
 
     file.close();
     exit(EXIT_SUCCESS);
