@@ -3,15 +3,17 @@ CXX_FLAGS2 = -Wall -Wextra -Wpedantic -Wconversion -Werror -g
 CXX_FLAGS3 = -std=c++2b -ggdb
 CXX = g++
 MAKEFLAGS += --silent
-FILENAME = main
+FILENAME = maze-solver
+SOURCES = main.cpp utils.cpp
 
 default:
-	$(CXX) $(CXX_FLAGS) $(CXX_FLAGS2) $(FILENAME).cpp -o maze-solver
+	$(CXX) $(CXX_FLAGS) $(CXX_FLAGS2) $(SOURCES) -o $(FILENAME)
 run:
-	$(CXX) $(CXX_FLAGS) $(FILENAME).cpp -o $(FILENAME)
+	$(CXX) $(CXX_FLAGS) $(SOURCES) -o $(FILENAME)
 	./$(FILENAME) -i example.txt -o output.txt
 	rm $(FILENAME)
+	cat output.txt
 debug:
-	$(CXX) $(CXX_FLAGS3) $(FILENAME).cpp -o $(FILENAME)
+	$(CXX) $(CXX_FLAGS3) $(SOURCES) -o $(FILENAME)
 clean:
-	rm maze-solver output.txt
+	rm $(FILENAME) output.txt

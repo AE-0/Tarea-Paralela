@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <functional>
 #include <algorithm>
 #include <numeric>
@@ -5,49 +6,38 @@
 #include <array>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <fstream>
 #include <iostream>
 #include <argp.h>
+#include "utils.h"
 
 namespace ra = std::ranges;
 namespace rv = ra::views;
 
-struct Arguments {
-    std::string input_filename;
-    std::string output_filename;
-};
+auto find_path(std::vector<std::vector<int>>& matrix, int target, std::size_t row, std::size_t col) -> std::vector<std::pair<int, int>> {
+    if (row >= matrix.size() || col >= matrix[0].size() || matrix[row][col] == -1) return {}; // Wall or out of bounds
 
-static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-    Arguments *arguments = static_cast<Arguments *>(state->input);
-    switch (key) {
-        case 'i':
-            arguments->input_filename = arg;
-            break;
-        case 'o':
-            arguments->output_filename = arg;
-            break;
-        default:
-            return ARGP_ERR_UNKNOWN;
+    if (matrix[row][col] == target) return {{row, col}}; // Path found!
+
+    const auto cur_elem = matrix[row][col];
+    matrix[row][col] = -1; // Mark as visited
+
+    const std::vector dr = {1, -1, 0, 0};
+    const std::vector dc = {0, 0, 1, -1};
+    for (const auto& i : rv::iota(0, 4)) { // C++20 std::ranges::views::iota
+        auto path = find_path(matrix, target, row + dr[i], col + dc[i]);
+        if (!path.empty()) {
+            path.push_back({row, col});
+            return path;
+        }
     }
-    return 0;
+
+    matrix[row][col] = cur_elem; // Unmark visited if no valid path found
+    return {};
 }
 
-template <typename T>
-void print(const std::vector<T> &v, std::string_view separator = " ") {
-    for (const auto& e : v)
-        std::cout << e << separator << '\n';
-}
-
-template <typename T>
-void print(const std::vector<std::vector<T>> &m, std::string_view separator = " ") {
-    for (const auto& v : m) {
-        for (const auto& e : v)
-            std::cout << e << separator;
-        std::cout << '\n';
-    }
-}
-
-auto flood_fill(std::vector<std::vector<int>> maze, std::size_t start_row, std::size_t start_col) -> std::vector<std::vector<int>> {
+auto flood_fill(std::vector<std::vector<int>> maze, std::size_t start_row, std::size_t start_col) -> std::vector<std::pair<int, int>> {
     const auto rows = maze.size();
     const auto cols = maze[0].size();
 
@@ -74,31 +64,29 @@ auto flood_fill(std::vector<std::vector<int>> maze, std::size_t start_row, std::
             }
         }
     }
-    return solved_maze;
+    const auto end = ra::min_element(solved_maze.back(), std::less(), [](auto e) { // C++20 std::ranges::min_element
+        return (e != -1) ? false : true;
+    });
+
+    const auto path = find_path(solved_maze, *end, start_row, start_col);
+
+    return path;
 }
 
-void encode(std::vector<std::vector<int>> matrix, std::string wall, std::string space, std::string ouput_file) {
+void encode(std::vector<std::vector<int>> matrix, std::string_view wall, std::string_view space, std::string_view route, std::string ouput_file) {
         std::ofstream file;
         file.open(ouput_file);
         for (const auto& row : matrix) {
             for (const auto& elem : row)
-                file << (elem ? wall : space);
-             file << '\n';
+                file << (elem == 0 ? space : (elem == 1 ? wall : route)); // Using a switch statement is 10 lines longer
+            file << '\n';
         }
         file.close();
 }
 
-auto main(int argc, char **argv) -> int {
-    Arguments args;
-    std::string input_filename, output_filename;
-    static const argp_option options[] = {
-        {"input", 'i', "FILE", 0, "Input file", 0},
-        {"output", 'o', "FILE", 0, "Output file", 0},
-        {nullptr, 0, nullptr, 0, nullptr, 0}};  // supresses -Werror=missing-field-initializers
-    static const argp argp_parser = {
-        options, parse_opt, "FILE", "Pass a file as an argument using -i and -o flag",
-        nullptr, nullptr, nullptr};             // -Werror=missing-field-initializers
-    argp_parse(&argp_parser, argc, argv, 0, 0, &args);
+auto main(int argc, char** argv) -> int {
+    utils::Arguments args;
+    argp_parse(&utils::argp_parser, argc, argv, 0, nullptr, &args);
 
     std::ifstream file(args.input_filename);
     if (!file.is_open()) {
@@ -106,15 +94,16 @@ auto main(int argc, char **argv) -> int {
         exit(EXIT_FAILURE);
     }
 
-    const auto maze = [&]() {          // Immediately invoked lambda (IIFE) improves performance and inmutability
-        std::vector<std::string> result;    // ITM anti-pattern
+    const auto maze = [&]() {               // Immediately invoked lambda (IIFE) better for value semantics and immutability
+        std::vector<std::string> result;    // ITM anti-pattern (Initialize Then Modify) unsafe but gets inmediately destroyed by the garbage collector so is fine
         for (std::string line; std::getline(file, line);)
             result.push_back(line);
         result.pop_back();                  // Removes null character, avoiding segfault when converting to integer
         return result;
     }();
+    file.close();
 
-    const auto matrix = [=]() {
+    const auto matrix = [=]() {                 // Parse maze from "█" and ' ' to 1s and 0s
         std::vector<std::vector<int>> result;   // ITM anti-pattern
         for (const auto& row : maze) {
             std::vector<int> values;            // ITM anti-pattern
@@ -125,19 +114,24 @@ auto main(int argc, char **argv) -> int {
         return result;
     }();
 
-    const auto start = ra::find_if(matrix, [](const auto& e) { // pointer to the first 0 value element
+    const auto start = ra::find_if(matrix, [](const auto& e) { // Pointer to the first 0 value element using C++20 std::ranges::find, std::ranges::find_if
         return ra::find(e, 0) != e.end();
     });
+
     const auto start_row = std::distance(matrix.begin(), start);
     const auto start_column = std::distance(start->begin(), ra::find(*start, 0));
 
     const auto solved_maze = flood_fill(matrix, start_row, start_column);
 
-    print(maze, "");
-    print(solved_maze);
+    const auto solution = [=]() {
+        std::vector<std::vector<int>> result = matrix;
+        for (const auto& coord : solved_maze) {
+            std::size_t row = coord.first;
+            std::size_t col = coord.second;
+            result[row][col] = 2;
+        }
+        return result;
+    }();
 
-    encode(matrix, "█", " ", args.output_filename);
-
-    file.close();
-    exit(EXIT_SUCCESS);
+    encode(solution, "█", " ", "*", args.output_filename);
 }
