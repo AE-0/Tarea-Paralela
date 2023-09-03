@@ -1,4 +1,4 @@
-## Tarea Análisis de Algoritmos
+## Tarea Computación Paralela y Distribuida
 
 Solución de un laberinto utilizando algoritmo `flood fill` en C++20
 
