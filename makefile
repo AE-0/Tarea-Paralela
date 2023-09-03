@@ -1,6 +1,6 @@
-CXX_FLAGS = -std=c++2b -O2
+CXX_FLAGS = -std=c++20 -O2
 CXX_FLAGS2 = -Wall -Wextra -Wpedantic -Wconversion -Werror -g
-CXX_FLAGS3 = -std=c++2b -ggdb
+CXX_FLAGS3 = -std=c++20 -ggdb
 CXX = g++
 MAKEFLAGS += --silent
 FILENAME = maze-solver

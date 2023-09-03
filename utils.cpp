@@ -13,6 +13,13 @@ namespace utils {
             case 'h':
                 argp_state_help(state, stdout, ARGP_HELP_STD_HELP);
                 exit(EXIT_SUCCESS);
+            case ARGP_KEY_END:
+                if (arguments->input_filename.empty() || arguments->output_filename.empty()) {
+                    fprintf(stderr, "Error: Both -i and -o parameters are required.\n");
+                    argp_state_help(state, stderr, ARGP_HELP_USAGE);
+                    exit(EXIT_FAILURE);
+                }
+                break;
             default:
                 return ARGP_ERR_UNKNOWN;
         }
